@@ -26,7 +26,6 @@ def retrieve_similar(image_path: str, k: int = 5) -> dict:
         return {"results": [], "error": "Index not built. Run faiss_index.py first."}
 
     query_vector = extract_features(image_path).astype("float32").reshape(1, -1)
-
     scores, indices = index.search(query_vector, k)
 
     results = []

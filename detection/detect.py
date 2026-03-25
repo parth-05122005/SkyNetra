@@ -8,7 +8,7 @@ model = None
 def load_model():
     global model
     if model is None:
-        model = YOLO("weights/best (2).pt")  # using fine-tuned model
+        model = YOLO("weights/best (2).pt")
     return model
 
 def run_detection(image_path: str) -> dict:
@@ -54,6 +54,10 @@ def run_detection(image_path: str) -> dict:
         "annotated_image": annotated_path,
         "label_file": label_path
     }
+
+# Also add this so Member 3's backend can call detect_objects() too
+def detect_objects(image_path: str) -> dict:
+    return run_detection(image_path)
 
 if __name__ == "__main__":
     import sys
