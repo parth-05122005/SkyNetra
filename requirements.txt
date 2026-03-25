@@ -2,3 +2,8 @@ ultralytics
 opencv-python
 torch
 torchvision
+torch
+torchvision
+faiss-cpu
+numpy
+pillow
