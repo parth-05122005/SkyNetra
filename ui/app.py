@@ -84,6 +84,31 @@ if uploaded_file is not None:
             st.subheader("📦 Detected Objects")
             objects = result["detection"].get("objects", [])
 
+            # ── Learning type summary ──────────────────────────────────
+            summary = result["detection"].get("summary", {})
+            if summary:
+                st.divider()
+                st.subheader("🧠 Learning Mode Breakdown")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total Objects",      summary.get("total_objects", 0))
+                c2.metric("✅ Supervised",      summary.get("supervised_count", 0),
+                        help="Detected with confidence > 0.6 using YOLOv8")
+                c3.metric("🔵 Unsupervised",    summary.get("unsupervised_count", 0),
+                        help="Unknown objects grouped by K-Means clustering")
+
+            # ── Per object learning type badge ────────────────────────
+            for obj in objects:
+                mode  = obj.get("learning_type", "supervised")
+                color = "🟢" if mode == "supervised" else "🔵"
+                badge = "Supervised" if mode == "supervised" else f"Unsupervised (Cluster {obj.get('cluster_id', '?')})"
+                conf  = obj["confidence"]
+                st.markdown(
+                    f"{color} **{obj['label'].upper()}** — "
+                    f"`{badge}` — "
+                    f"Confidence: `{conf:.0%}` — "
+                    f"BBox: `{obj['bbox']}`"
+                )
+
             if objects:
                 for obj in objects:
                     conf = obj["confidence"]
