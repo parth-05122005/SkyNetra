@@ -191,12 +191,14 @@ Training KMeans with 10 clusters...
 
 ---
 
+### Step 3.1 — Make sure that you have created an empty output folder
+
 ### Step 4 — Start the FastAPI backend
 
 Open **Terminal 1** and run:
 
 ```bash
-uvicorn backend.app:app --reload --port 8000
+python -m uvicorn backend.app:app --reload --port 8000
 ```
 
 You should see:
@@ -214,7 +216,7 @@ INFO: Application startup complete.
 Open **Terminal 2** and run:
 
 ```bash
-streamlit run ui/app.py
+python -m streamlit run ui/app.py
 ```
 
 You should see:
