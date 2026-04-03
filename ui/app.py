@@ -54,7 +54,7 @@ if uploaded_file is not None:
     # Show uploaded image
     st.subheader("📸 Uploaded Image")
     image = Image.open(uploaded_file)
-    st.image(image, caption="Your satellite image", use_column_width=True)
+    st.image(image, caption="Your satellite image", width="stretch")
 
     # Analyze button
     if st.button("🔍 Analyze Image", type="primary", use_container_width=True):
