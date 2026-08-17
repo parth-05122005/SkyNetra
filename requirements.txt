@@ -1,7 +1,5 @@
 ultralytics
-opencv-python
-torch
-torchvision
+opencv-python-headless
 torch
 torchvision
 faiss-cpu
@@ -11,5 +9,5 @@ uvicorn
 streamlit
 requests
 python-multipart
-pillow
+Pillow
 scikit-learn
