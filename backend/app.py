@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import uuid
+import base64
 
 # Keep torch/BLAS to one thread: lowers RAM on small instances (Render free tier = 512MB)
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -52,6 +53,16 @@ async def analyze(file: UploadFile = File(...)):
     try:
         detection = detect_objects(image_path)
         retrieval = retrieve_similar(image_path, k=5)
+        # Inline the generated files so a separately hosted frontend (Vercel) can show them
+        # without fetching shared paths that the next request will overwrite
+        annotated = detection.get("annotated_image")
+        if annotated and os.path.exists(annotated):
+            with open(annotated, "rb") as f:
+                detection["annotated_image_base64"] = base64.b64encode(f.read()).decode()
+        label_file = detection.get("label_file")
+        if label_file and os.path.exists(label_file):
+            with open(label_file, "r") as f:
+                detection["label_text"] = f.read()
     finally:
         os.remove(image_path)
 

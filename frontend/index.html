@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SkyNetra</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>" />
+  <style>
+    :root {
+      --bg: #f7f8fa; --card: #ffffff; --text: #1b1f24; --muted: #6b7280;
+      --border: #e3e6ea; --accent: #2563eb; --green: #16a34a; --orange: #ea8a0c; --red: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1117; --card: #161b22; --text: #e6edf3; --muted: #8b949e;
+        --border: #30363d; --accent: #4f8cff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+    header { text-align: center; margin-bottom: 28px; }
+    h1 { margin: 0; font-size: 2.4rem; }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .drop { border: 2px dashed var(--border); border-radius: 12px; padding: 28px; text-align: center; cursor: pointer; }
+    .drop.over { border-color: var(--accent); }
+    .drop input { display: none; }
+    #preview { max-width: 100%; max-height: 420px; border-radius: 8px; margin-top: 16px; display: none; }
+    button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: default; }
+    .status { margin-top: 12px; color: var(--muted); text-align: center; min-height: 1.5em; }
+    .status.error { color: var(--red); }
+    #results { display: none; margin-top: 24px; gap: 20px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 760px) { #results { grid-template-columns: 1fr; } }
+    h2 { margin: 0 0 12px; font-size: 1.2rem; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+    .metric { border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+    .metric b { display: block; font-size: 1.5rem; }
+    .metric span { color: var(--muted); font-size: .85rem; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 8px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+    .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: .8rem; color: #fff; }
+    .sup { background: var(--green); } .unsup { background: var(--orange); }
+    code { font-size: .85rem; color: var(--muted); }
+    #annotated { max-width: 100%; border-radius: 8px; margin-top: 16px; }
+    a.dl { display: inline-block; margin-top: 16px; color: var(--accent); font-weight: 600; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🛰️ SkyNetra</h1>
+    <p>Satellite Visual Search, Detection &amp; Auto-Labelling System</p>
+  </header>
+
+  <section class="card">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="image/jpeg,image/png" />
+      <strong>Upload a satellite image</strong><br />
+      <span class="muted">Click or drop a JPG / PNG here</span>
+    </label>
+    <div style="text-align:center"><img id="preview" alt="Uploaded image" /></div>
+    <button id="analyze" disabled>🔍 Analyze Image</button>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section id="results">
+    <div class="card">
+      <h2>📦 Detected Objects</h2>
+      <div class="metrics">
+        <div class="metric"><b id="m-total">0</b><span>Total</span></div>
+        <div class="metric"><b id="m-sup">0</b><span>Supervised</span></div>
+        <div class="metric"><b id="m-unsup">0</b><span>Unsupervised</span></div>
+      </div>
+      <ul id="objects"></ul>
+      <img id="annotated" alt="Annotated image with bounding boxes" />
+      <a class="dl" id="download" download="skynetra_labels.txt" style="display:none">⬇️ Download YOLO label file (.txt)</a>
+    </div>
+    <div class="card">
+      <h2>🔁 Similar Satellite Images</h2>
+      <ul id="similar"></ul>
+    </div>
+  </section>
+</main>
+
+<script src="config.js"></script>
+<script>
+  const API_URL = (window.SKYNETRA_API_URL || "http://localhost:8000").replace(/\/$/, "");
+  const $ = (id) => document.getElementById(id);
+  let selected = null;
+
+  function pick(file) {
+    if (!file) return;
+    selected = file;
+    $("preview").src = URL.createObjectURL(file);
+    $("preview").style.display = "inline-block";
+    $("analyze").disabled = false;
+    setStatus("");
+  }
+
+  function setStatus(msg, isError) {
+    $("status").textContent = msg;
+    $("status").className = "status" + (isError ? " error" : "");
+  }
+
+  function li(html) {
+    const el = document.createElement("li");
+    el.innerHTML = html;
+    return el;
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  $("file").addEventListener("change", (e) => pick(e.target.files[0]));
+  const drop = $("drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); pick(e.dataTransfer.files[0]); });
+
+  $("analyze").addEventListener("click", async () => {
+    if (!selected) return;
+    $("analyze").disabled = true;
+    $("results").style.display = "none";
+    // Render's free tier sleeps when idle; the first request can take close to a minute
+    setStatus("🤖 Running AI analysis… the first request may take up to a minute while the server wakes up.");
+
+    const body = new FormData();
+    body.append("file", selected, selected.name);
+    try {
+      const res = await fetch(API_URL + "/analyze", { method: "POST", body });
+      if (!res.ok) throw new Error("Server returned " + res.status);
+      render(await res.json());
+      setStatus("✅ Analysis complete!");
+    } catch (err) {
+      setStatus("❌ Could not reach the backend: " + err.message, true);
+    } finally {
+      $("analyze").disabled = false;
+    }
+  });
+
+  function render(result) {
+    const det = result.detection || {};
+    const summary = det.summary || {};
+    $("m-total").textContent = summary.total_objects || 0;
+    $("m-sup").textContent = summary.supervised_count || 0;
+    $("m-unsup").textContent = summary.unsupervised_count || 0;
+
+    const objects = $("objects");
+    objects.innerHTML = "";
+    (det.objects || []).forEach((o) => {
+      const sup = o.learning_type === "supervised";
+      const badge = sup ? '<span class="badge sup">Supervised</span>'
+                        : `<span class="badge unsup">Unsupervised${o.cluster_id != null ? " · Cluster " + esc(o.cluster_id) : ""}</span>`;
+      objects.appendChild(li(`<strong>${esc(o.label)}</strong> ${badge}<br />
+        Confidence: ${Math.round(o.confidence * 100)}% · <code>bbox [${o.bbox.map(esc).join(", ")}]</code>`));
+    });
+    if (!objects.children.length) objects.appendChild(li('<span class="muted">No objects detected.</span>'));
+
+    const img = $("annotated");
+    if (det.annotated_image_base64) {
+      img.src = "data:image/jpeg;base64," + det.annotated_image_base64;
+      img.style.display = "block";
+    } else {
+      img.style.display = "none";
+    }
+
+    const dl = $("download");
+    if (det.label_text) {
+      dl.href = URL.createObjectURL(new Blob([det.label_text], { type: "text/plain" }));
+      dl.style.display = "inline-block";
+    } else {
+      dl.style.display = "none";
+    }
+
+    const ret = result.retrieval || {};
+    const similar = $("similar");
+    similar.innerHTML = "";
+    (ret.results || []).forEach((m, i) => {
+      similar.appendChild(li(`<strong>#${i + 1}</strong> <code>${esc(m.image.split("/").pop())}</code> — Similarity: ${Math.round(m.similarity_score * 100)}%`));
+    });
+    if (!similar.children.length) {
+      similar.appendChild(li(`<span class="muted">${ret.error ? esc(ret.error) : "No similar images found."}</span>`));
+    }
+
+    $("results").style.display = "grid";
+  }
+</script>
+</body>
+</html>
