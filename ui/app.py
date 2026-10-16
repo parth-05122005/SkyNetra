@@ -63,7 +63,7 @@ if uploaded_file is not None:
             try:
                 uploaded_file.seek(0)
                 response = requests.post(
-                    #"http://localhost:8000/analyze",
+                    # "http://localhost:8000/analyze",
                     "https://skynetra-api.onrender.com/analyze",
                     files={"file": (uploaded_file.name, uploaded_file, "image/jpeg")},
                     timeout=60

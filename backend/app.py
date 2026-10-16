@@ -2,6 +2,11 @@ import sys
 import os
 import shutil
 import uuid
+
+# Keep torch/BLAS to one thread: lowers RAM on small instances (Render free tier = 512MB)
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,11 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve output images so UI can display them
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
-
 os.makedirs("temp", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
+
+# Serve output images so UI can display them
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 
 @app.get("/")
@@ -44,8 +49,11 @@ async def analyze(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, f)
 
     # Call both modules
-    detection = detect_objects(image_path)
-    retrieval = retrieve_similar(image_path, k=5)
+    try:
+        detection = detect_objects(image_path)
+        retrieval = retrieve_similar(image_path, k=5)
+    finally:
+        os.remove(image_path)
 
     # Combine and return
     return {

@@ -2,8 +2,13 @@ services:
   - type: web
     name: skynetra-api
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    # ultralytics pulls in opencv-python (needs libGL); swap it for the headless build
+    buildCommand: pip install -r requirements.txt && pip uninstall -y opencv-python && pip install --force-reinstall --no-deps opencv-python-headless
+    startCommand: uvicorn backend.app:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: YOLO_CONFIG_DIR
+        value: /tmp/Ultralytics

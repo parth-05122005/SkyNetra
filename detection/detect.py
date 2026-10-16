@@ -4,18 +4,20 @@ import os
 import json
 import numpy as np
 import pickle
-from sklearn.cluster import KMeans
 
 model = None
+kmeans_model = None
 
 # ── Load KMeans if available ──────────────────────────────────
 CLUSTER_PATH = "retrieval/embeddings/kmeans_model.pkl"
 
 def load_kmeans():
-    if os.path.exists(CLUSTER_PATH):
+    # Loaded once and cached; unpickling pulls in scikit-learn only when the file exists
+    global kmeans_model
+    if kmeans_model is None and os.path.exists(CLUSTER_PATH):
         with open(CLUSTER_PATH, "rb") as f:
-            return pickle.load(f)
-    return None
+            kmeans_model = pickle.load(f)
+    return kmeans_model
 
 def load_model():
     global model
